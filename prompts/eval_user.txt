@@ -1,0 +1,43 @@
+Evaluate the decision below using this rubric.
+
+Context:
+- scenario_id: {scenario_id}
+- scenario_title: {scenario_title}
+- crisis_overview: {crisis_overview}
+- phase_id: {phase_id}
+- timeframe: {timeframe}
+- situation_summary: {situation_summary}
+- phase_objectives: {objectives}
+- stakeholders: {stakeholders}
+
+Decision point:
+- question: {question}
+- chosen_action: {decision_text}
+- optional_constraints: {constraints}
+
+Rubric dimensions (0-5 each):
+- legal_compliance: timely notification, liability exposure, incident protocol
+- pr_reputation: clarity, empathy, proactive tone, consistency
+- customer_impact: clear guidance, mitigation, churn risk reduction
+- operational_feasibility: realistic execution, clear ownership, feasible timeline
+- investor_financial: uncertainty reduction, disclosure alignment, cost awareness
+
+Output JSON exactly:
+{{
+  "scores": {{
+    "legal_compliance": 0,
+    "pr_reputation": 0,
+    "customer_impact": 0,
+    "operational_feasibility": 0,
+    "investor_financial": 0
+  }},
+  "total_score": 0,
+  "reasons": ["..."],
+  "risk_flags": ["..."],
+  "recommendations": ["..."]
+}}
+
+Rules:
+- Keep the response concise and concrete.
+- Include concrete risks.
+- total_score must equal the sum of all five dimensions.

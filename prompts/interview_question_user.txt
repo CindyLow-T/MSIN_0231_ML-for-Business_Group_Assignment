@@ -1,0 +1,27 @@
+Generate the next interview question for this candidate.
+
+Context:
+- Job role: {job_role}
+- Company type: {company_type}
+- Target company/preset: {company_target}
+- Company profile guidance:
+{company_profile}
+- Interview style: {interview_style}
+- Candidate CV text:
+{cv_text}
+
+Round index: {round_index}
+Previous question: {previous_question}
+Previous answer: {previous_answer}
+
+Return strict JSON with this schema:
+{{
+  "question": "string",
+  "intent": "string"
+}}
+
+Requirements:
+- Ask one clear question only.
+- Make it relevant to the role and CV.
+- Reflect company profile priorities when possible.
+- If previous question/answer are provided, make this a meaningful follow-up.

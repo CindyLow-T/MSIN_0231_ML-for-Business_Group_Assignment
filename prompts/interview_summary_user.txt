@@ -1,0 +1,27 @@
+Create a final interview summary.
+
+Context:
+- Job role: {job_role}
+- Company type: {company_type}
+- Target company/preset: {company_target}
+- Company profile guidance:
+{company_profile}
+- Interview style: {interview_style}
+- Target interview timeline: {plan_duration}
+
+Interview records (question, answer, and evaluations):
+{qa_records}
+
+Return strict JSON:
+{{
+  "overall_score": 0-10,
+  "strengths": ["string"],
+  "weaknesses": ["string"],
+  "overall_improvement_suggestions": ["string"],
+  "personalized_training_plan": ["string"]
+}}
+
+Requirements:
+- Make points practical and actionable.
+- overall_improvement_suggestions should describe how to improve future answers, without giving rewritten sample answers.
+- personalized_training_plan should be concrete actions matched to the target interview timeline.

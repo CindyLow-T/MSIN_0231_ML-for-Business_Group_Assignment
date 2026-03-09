@@ -1,0 +1,16 @@
+Repair the broken JSON to match the target schema.
+
+Target schema:
+{schema}
+
+Broken output:
+{broken_json}
+
+Validation/parsing error:
+{error_message}
+
+Rules:
+- Return strict JSON only.
+- Preserve original intent where possible.
+- Ensure all required keys exist.
+- Ensure value types are valid.

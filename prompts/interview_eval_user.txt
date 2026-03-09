@@ -1,0 +1,35 @@
+Evaluate this interview answer.
+
+Context:
+- Job role: {job_role}
+- Company type: {company_type}
+- Target company/preset: {company_target}
+- Company profile guidance:
+{company_profile}
+- Interview style: {interview_style}
+- Candidate CV text:
+{cv_text}
+
+Round: {round_index}
+Question: {question}
+Candidate answer: {answer}
+
+Return strict JSON with this schema:
+{{
+  "overall_score": 0-10,
+  "structure_score": 0-10,
+  "clarity_score": 0-10,
+  "impact_score": 0-10,
+  "star_score": 0-10,
+  "strengths": ["string"],
+  "weaknesses": ["string"],
+  "improved_answer": "string",
+  "coach_tip": "string",
+  "follow_up_question": "string"
+}}
+
+Requirements:
+- Provide concrete and specific feedback.
+- Follow-up question should naturally continue the interview.
+- Keep improved_answer concise but high quality.
+- If answer lacks STAR or measurable impact, highlight that explicitly.

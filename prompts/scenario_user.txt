@@ -1,0 +1,45 @@
+Build a complete enterprise crisis simulation package.
+
+Inputs:
+- industry: {industry}
+- company_size: {company_size}
+- region: {region}
+- crisis_type: {crisis_type}
+- phase_count: {phase_count}
+- severity: {severity} (1=minor, 5=critical)
+
+Output rules:
+- Return STRICT JSON only (no markdown).
+- Use professional enterprise tone.
+- Keep content concise but realistic.
+- Generate EXACTLY {phase_count} phases labeled P1..P{phase_count}.
+- Keep timeline internally consistent.
+- Use mixed timeframe granularity across phases (early hours, then days, then weeks/months for later phases).
+
+JSON keys (exactly these top-level keys):
+- scenario_id, title, overview, assumptions, stakeholders, constraints, role_cards, phases, artifacts
+
+role_cards must include:
+- CEO, PR, Legal, Ops, CustomerSupport, InvestorRelations
+- each role has: responsibilities[], priorities[], dos[], donts[]
+- keep each list short (2-4 items)
+
+phases must be an array of EXACTLY {phase_count} objects.
+Each phase object must include:
+- phase_id
+- timeframe
+- situation_summary
+- injects: media_article, social_posts (exactly 5), regulator_message, internal_email
+- objectives (2-4 items)
+- decision_points (1-2 items)
+
+Each decision point must include:
+- question
+- options (exactly 4)
+
+artifacts must include:
+- press_release_template
+- internal_allhands_template
+- customer_notice_template
+
+Return JSON only.
