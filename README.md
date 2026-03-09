@@ -98,3 +98,4 @@ The interview app supports:
 - Treat `app.py` as your product MVP.
 - Build pitch deck and MVP-structure slides separately in PowerPoint/Canva, then export as PDFs.
 - Include code zip from this repository in submission.
+# MSIN_0231_ML-for-Business_Group_Assignment
