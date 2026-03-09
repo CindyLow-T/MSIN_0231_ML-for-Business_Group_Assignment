@@ -82,7 +82,7 @@ pytest -q
 ## Optional: Run AI Interview Copilot (Second App)
 
 ```bash
-streamlit run interview_app.py
+streamlit run MVP_Notebook.py
 ```
 
 The interview app supports:
