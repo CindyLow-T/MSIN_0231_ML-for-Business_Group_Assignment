@@ -24,12 +24,20 @@ from src.llm import LLMClient
 
 load_dotenv()
 
+# --------------------------------------------
+# App bootstrap
+# --------------------------------------------
+# Configure the Streamlit app shell and sidebar default state.
 st.set_page_config(
     page_title="AI Interview Copilot",
     layout="wide",
     initial_sidebar_state="collapsed" if st.session_state.get("iv_sidebar_collapsed", False) else "expanded",
 )
 
+# --------------------------------------------
+# Session state defaults
+# --------------------------------------------
+# Keep all cross-page interview state in Streamlit session storage.
 if "iv_api_key" not in st.session_state:
     st.session_state.iv_api_key = os.getenv("OPENAI_API_KEY", "")
 if "iv_started" not in st.session_state:
@@ -79,6 +87,7 @@ if "iv_question_audio_cache" not in st.session_state:
 
 
 def reset_interview() -> None:
+    """Clear interview setup/results while keeping app-level preferences."""
     st.session_state.iv_started = False
     st.session_state.iv_current_question = ""
     st.session_state.iv_current_intent = ""
@@ -93,16 +102,19 @@ def reset_interview() -> None:
 
 
 def help_icon(help_text: str) -> str:
+    """Render a small tooltip icon used in section headers."""
     safe = html.escape(help_text, quote=True)
     return f"<span class='iv-help' title='{safe}'>ⓘ</span>"
 
 
 def is_api_key_format_valid(api_key: str) -> bool:
+    """Perform lightweight local format validation before remote API check."""
     key = api_key.strip()
     return key.startswith("sk-") and len(key) >= 20
 
 
 def validate_openai_api_key(api_key: str, model_name: str) -> tuple[bool, str]:
+    """Validate key by attempting to retrieve the selected model."""
     try:
         client = OpenAI(api_key=api_key)
         client.models.retrieve(model_name)
@@ -112,6 +124,7 @@ def validate_openai_api_key(api_key: str, model_name: str) -> tuple[bool, str]:
 
 
 def validate_api_input_on_enter() -> None:
+    """Validate API key on Enter and update sidebar/session status flags."""
     entered_key = st.session_state.get("iv_api_input", "").strip()
     model_name = st.session_state.get("iv_model_name", "gpt-4o-mini")
     st.session_state.iv_api_status_level = ""
@@ -149,6 +162,7 @@ def validate_api_input_on_enter() -> None:
 
 
 def render_score_trend(records: list[dict]) -> None:
+    """Render round-by-round overall score trend for completed answers."""
     if not records:
         return
     df = pd.DataFrame(records).copy()
@@ -179,6 +193,7 @@ def render_score_trend(records: list[dict]) -> None:
 
 
 def render_evaluation_details(record: dict) -> None:
+    """Show rubric metrics and qualitative feedback for one response."""
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("Overall", f"{record['overall_score']}/10")
     m2.metric("Structure", record["structure_score"])
@@ -199,6 +214,7 @@ def render_evaluation_details(record: dict) -> None:
 
 
 def render_question_review(record: dict, *, expanded_eval: bool = False) -> None:
+    """Render a question card with answer and expandable evaluation details."""
     st.markdown(f"### Question {record['round']}")
     st.caption(record["question"])
     with st.expander("Your Answer", expanded=False):
@@ -208,6 +224,7 @@ def render_question_review(record: dict, *, expanded_eval: bool = False) -> None
 
 
 def build_company_profile(company_type: str, company_size: str, company_location: str) -> str:
+    """Create a compact company context string used in prompts."""
     return (
         f"{company_type} organization, company size: {company_size}, location: {company_location}. "
         "Prioritize structured communication, measurable impact, role fit, and practical execution."
@@ -215,6 +232,7 @@ def build_company_profile(company_type: str, company_size: str, company_location
 
 
 def generate_final_summary(setup: dict, llm: LLMClient | None) -> bool:
+    """Call summary pipeline and store final report data in session state."""
     if llm is None:
         st.error("Please save an OpenAI API key first.")
         return False
@@ -247,6 +265,7 @@ def generate_final_summary(setup: dict, llm: LLMClient | None) -> bool:
 
 
 def build_report_preview(setup: dict, records: list[dict], summary: dict) -> str:
+    """Build a plain-text report preview shown before PDF download."""
     improvement_items = summary.get("overall_improvement_suggestions") or summary.get("suggested_answers", [])
     lines = [
         "# AI Interview Copilot - Performance Report",
@@ -284,6 +303,7 @@ def build_report_preview(setup: dict, records: list[dict], summary: dict) -> str
 
 
 def build_report_pdf(setup: dict, records: list[dict], summary: dict) -> bytes:
+    """Generate the final downloadable performance report in PDF format."""
     improvement_items = summary.get("overall_improvement_suggestions") or summary.get("suggested_answers", [])
 
     buffer = io.BytesIO()
@@ -375,10 +395,12 @@ def build_report_pdf(setup: dict, records: list[dict], summary: dict) -> bytes:
     return buffer.getvalue()
 
 
+# Ordered pages in the main user workflow.
 WORKFLOW_STEPS = ["Interview Setup", "Interview Room", "Response Evaluation", "Performance Report"]
 
 
 def get_max_unlocked_step_idx() -> int:
+    """Return the highest page index unlocked by current progress."""
     max_idx = 0
     if st.session_state.iv_started or st.session_state.iv_records:
         max_idx = 1
@@ -388,12 +410,14 @@ def get_max_unlocked_step_idx() -> int:
 
 
 def go_to_step(step_idx: int) -> None:
+    """Navigate to a workflow step while enforcing unlock constraints."""
     safe_idx = max(0, min(step_idx, get_max_unlocked_step_idx()))
     st.session_state.iv_nav_page = WORKFLOW_STEPS[safe_idx]
     st.rerun()
 
 
 def render_progress_nav(current_idx: int, max_unlocked_idx: int) -> None:
+    """Render top workflow navigation with lock/unlock behavior."""
     widths: list[int] = []
     for idx in range(len(WORKFLOW_STEPS)):
         widths.append(3)
@@ -424,6 +448,7 @@ def render_progress_nav(current_idx: int, max_unlocked_idx: int) -> None:
 
 
 def parse_pdf_text(uploaded_file) -> str:
+    """Extract text from uploaded PDF CV for question personalization."""
     try:
         from pypdf import PdfReader
     except Exception as exc:
@@ -440,6 +465,7 @@ def parse_pdf_text(uploaded_file) -> str:
 
 
 def transcribe_audio_answer(uploaded_audio, llm: LLMClient | None) -> str:
+    """Transcribe recorded/uploaded audio answer into editable text."""
     if llm is None:
         raise ValueError("OpenAI API key is required for voice transcription.")
     if uploaded_audio is None:
@@ -465,6 +491,7 @@ def transcribe_audio_answer(uploaded_audio, llm: LLMClient | None) -> str:
 
 
 def detect_audio_mime(data: bytes) -> str | None:
+    """Infer audio MIME type from binary header bytes."""
     if not data:
         return None
     if data.startswith(b"ID3") or data[:2] in {b"\xff\xfb", b"\xff\xf3", b"\xff\xf2"}:
@@ -487,6 +514,7 @@ def synthesize_question_audio(
     voice: str = "nova",
     speed: float = 1.0,
 ) -> tuple[bytes, str]:
+    """Synthesize spoken question audio, preferring higher-quality models."""
     if llm is None:
         raise ValueError("OpenAI API key is required for question voice playback.")
     prompt = question.strip()
@@ -522,6 +550,7 @@ def synthesize_question_audio(
 
 
 def speak_question_in_browser(question: str) -> None:
+    """Local browser speech fallback using Web Speech API."""
     speak_text = json.dumps(question.strip())
     components.html(
         f"""
@@ -617,6 +646,7 @@ def speak_question_in_browser(question: str) -> None:
 
 
 def render_instant_read_button(question: str, round_id: int, cloud_audio_src: str = "") -> None:
+    """Render single-click 'Read Question' with cloud-audio-first fallback logic."""
     safe_text = json.dumps(question.strip())
     safe_audio_src = json.dumps(cloud_audio_src)
     components.html(
@@ -731,6 +761,7 @@ def render_instant_read_button(question: str, round_id: int, cloud_audio_src: st
 def autoplay_audio_bytes(
     audio_bytes: bytes, mime: str = "audio/mpeg", fallback_text: str = "", nonce: str | None = None
 ) -> None:
+    """Autoplay helper for generated audio bytes with local speech fallback."""
     encoded = base64.b64encode(audio_bytes).decode("utf-8")
     fallback_json = json.dumps(fallback_text)
     run_nonce = nonce or str(time.time_ns())
@@ -834,6 +865,10 @@ def autoplay_audio_bytes(
     )
 
 
+# --------------------------------------------
+# Global UI styling
+# --------------------------------------------
+# Centralized CSS tokens and component styling for consistent UX.
 st.markdown(
     """
     <style>
@@ -1142,8 +1177,11 @@ st.markdown(
     </style>
     """,
     unsafe_allow_html=True,
+# --------------------------------------------
+# Sidebar controls
+# --------------------------------------------
+# API key input/validation and model selection.
 )
-
 st.sidebar.header("API Settings")
 model_name = st.sidebar.selectbox("Model", ["gpt-4o-mini"], index=0, key="iv_model_name")
 
@@ -1196,6 +1234,9 @@ llm = None
 if st.session_state.iv_api_key:
     llm = LLMClient(api_key=st.session_state.iv_api_key, model=model_name, max_retries=2)
 
+# --------------------------------------------
+# Global header + team details
+# --------------------------------------------
 st.markdown("<h1 class='app-title'>AI Interview Copilot</h1>", unsafe_allow_html=True)
 st.caption("AI-powered interview coaching platform for realistic simulation, structured evaluation, and personalized improvement planning.")
 st.markdown(
@@ -1203,6 +1244,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# --------------------------------------------
+# Intro/Landing page (pre-workflow)
+# --------------------------------------------
 if not st.session_state.iv_intro_completed:
     st.markdown(
         """
@@ -1288,12 +1332,16 @@ render_progress_nav(current_idx=current_idx, max_unlocked_idx=max_unlocked_idx)
 st.markdown("---")
 current_page = st.session_state.iv_nav_page
 
+# ============================================
+# Page 1: Interview Setup
+# ============================================
 if current_page == "Interview Setup":
     st.markdown(
         f"## Interview Setup {help_icon('Configure your role and interview context. These settings shape question style and final training plan.')}",
         unsafe_allow_html=True,
     )
     with st.container(border=True):
+        # Subsection: Core interview context
         row1_col1, row1_col2, row1_col3 = st.columns(3)
         with row1_col1:
             job_role = st.selectbox(
@@ -1347,6 +1395,7 @@ if current_page == "Interview Setup":
                 help="Set how many interview rounds to run in this session.",
             )
 
+        # Subsection: Company details + interview style
         row2_col1, row2_col2, row2_col3 = st.columns(3)
         with row2_col1:
             company_size = st.selectbox(
@@ -1390,6 +1439,7 @@ if current_page == "Interview Setup":
                 help="Choose the interview focus style.",
             )
 
+        # Subsection: Timeline + mode
         row3_col1, row3_col2, row3_col3 = st.columns(3)
         with row3_col1:
             plan_duration = st.selectbox(
@@ -1421,6 +1471,7 @@ if current_page == "Interview Setup":
         unsafe_allow_html=True,
     )
 
+    # Subsection: CV upload and extracted text editing
     if st.session_state.iv_clear_cv_state:
         st.session_state.iv_cv_text = ""
         st.session_state.iv_cv_file_sig = ""
@@ -1451,6 +1502,7 @@ if current_page == "Interview Setup":
     )
     cv_text = st.session_state.iv_cv_text
 
+    # Subsection: Setup actions (reset/start)
     hint_col, start_col = st.columns([5, 2])
     with hint_col:
         st.markdown("<div class='action-hint'>Need a clean slate? Use Reset Session.</div>", unsafe_allow_html=True)
@@ -1521,6 +1573,7 @@ if current_page == "Interview Setup":
 
     if st.session_state.iv_started or st.session_state.iv_records:
         st.markdown("---")
+        # Subsection: Quick navigation back to active interview
         c_hint, c_next = st.columns([5, 2])
         with c_hint:
             st.markdown("<div class='action-hint'>Interview in progress. Continue in Interview Room.</div>", unsafe_allow_html=True)
@@ -1528,6 +1581,9 @@ if current_page == "Interview Setup":
             if st.button("Go To Interview Room", use_container_width=True, type="primary"):
                 go_to_step(1)
 
+# ============================================
+# Page 2: Interview Room
+# ============================================
 elif current_page == "Interview Room":
     st.markdown(
         f"## Interview Room {help_icon('Answer questions one by one. Submit each response for AI scoring and follow-up question generation.')}",
@@ -1537,6 +1593,7 @@ elif current_page == "Interview Room":
     if not setup:
         st.info("Complete Interview Setup first.")
     else:
+        # Subsection: Resolve active setup context for this session
         active_job_role = setup.get("job_role", "Unknown role")
         active_company_type = setup.get("company_type", "General Corporate")
         active_company_size = setup.get("company_size", "Unknown size")
@@ -1554,6 +1611,7 @@ elif current_page == "Interview Room":
 
         if st.session_state.iv_started:
             if st.session_state.iv_current_question:
+                # Subsection: Active question prompt
                 st.markdown(
                     f"### Question {st.session_state.iv_round} {help_icon('Read the prompt carefully, answer with clear structure, measurable impact, and concise STAR logic.')}",
                     unsafe_allow_html=True,
@@ -1569,6 +1627,7 @@ elif current_page == "Interview Room":
                 round_id = st.session_state.iv_round
                 session_nonce = st.session_state.get("iv_session_nonce", 0)
                 if active_mode == "Voice":
+                    # Subsection: Voice-mode question playback + recording/transcription
                     st.markdown(
                         f"#### Question Audio {help_icon('Click once to read the current question aloud immediately.')}",
                         unsafe_allow_html=True,
@@ -1668,6 +1727,7 @@ elif current_page == "Interview Room":
                         st.session_state[transcript_key] = ""
                         st.rerun()
                 else:
+                    # Subsection: Text-mode answer input
                     answer = st.text_area(
                         "Your Answer",
                         key=f"answer_round_{session_nonce}_{round_id}",
@@ -1676,6 +1736,7 @@ elif current_page == "Interview Room":
                         help="Provide your full interview response here. Submit to receive score and follow-up.",
                     )
 
+                # Subsection: Per-question actions
                 a1, a2 = st.columns([2, 2])
                 with a1:
                     st.markdown(
@@ -1693,6 +1754,7 @@ elif current_page == "Interview Room":
                         st.error("Please save an OpenAI API key first.")
                     else:
                         try:
+                            # Evaluate current answer and prepare next question if applicable.
                             service = InterviewService(llm)
                             with st.spinner("Evaluating answer and generating follow-up..."):
                                 evaluation = service.evaluate_answer(
@@ -1743,6 +1805,7 @@ elif current_page == "Interview Room":
                     if generate_final_summary(setup, llm):
                         go_to_step(3)
             else:
+                # Subsection: Interview finished for selected round count
                 st.markdown("<div class='action-hint'>Question ended. You can finalize now or continue to Response Evaluation.</div>", unsafe_allow_html=True)
                 b1, b2 = st.columns(2)
                 with b1:
@@ -1757,6 +1820,7 @@ elif current_page == "Interview Room":
                     if st.button("Go To Response Evaluation", use_container_width=True, type="primary"):
                         go_to_step(2)
         else:
+            # Subsection: Not running, but allow navigation to completed outputs
             st.info("Interview is not currently running. Start from Interview Setup or review completed results.")
             if st.session_state.iv_records:
                 n_spacer, n_actions = st.columns([5, 2])
@@ -1766,6 +1830,9 @@ elif current_page == "Interview Room":
                     if st.button("Go To Performance Report", use_container_width=True, type="primary"):
                         go_to_step(3)
 
+# ============================================
+# Page 3: Response Evaluation
+# ============================================
 elif current_page == "Response Evaluation":
     st.markdown(
         f"## Response Evaluation {help_icon('Review scores and qualitative feedback for each submitted answer. Use this page to compare responses before final report.')}",
@@ -1774,12 +1841,14 @@ elif current_page == "Response Evaluation":
     if not st.session_state.iv_records:
         st.info("No evaluated responses yet. Complete at least one answer in Interview Room.")
     else:
+        # Subsection: Session-level summary metrics
         records = st.session_state.iv_records
         mc1, mc2, mc3 = st.columns(3)
         mc1.metric("Responses Evaluated", len(records))
         mc2.metric("Average Score", f"{round(sum(r['overall_score'] for r in records) / len(records), 1)}/10")
         mc3.metric("Latest Score", f"{records[-1]['overall_score']}/10")
 
+        # Subsection: Numeric score table (per question)
         st.markdown(
             f"### Score Summary {help_icon('Numeric rubric scores for each answered question. Higher score indicates better performance on that dimension.')}",
             unsafe_allow_html=True,
@@ -1799,6 +1868,7 @@ elif current_page == "Response Evaluation":
         )
         st.dataframe(history_df, use_container_width=True, hide_index=True)
 
+        # Subsection: Expandable qualitative review per question
         st.markdown(
             f"### Per-Question Review {help_icon('Expand each question to inspect your answer and detailed AI evaluation.')}",
             unsafe_allow_html=True,
@@ -1812,6 +1882,7 @@ elif current_page == "Response Evaluation":
                 render_evaluation_details(rec)
             st.markdown("---")
 
+        # Subsection: Page navigation actions
         nav1, nav2 = st.columns(2)
         with nav1:
             if st.session_state.iv_started and st.session_state.iv_current_question:
@@ -1821,6 +1892,9 @@ elif current_page == "Response Evaluation":
             if st.button("Go To Performance Report", use_container_width=True, type="primary"):
                 go_to_step(3)
 
+# ============================================
+# Page 4: Performance Report
+# ============================================
 elif current_page == "Performance Report":
     st.markdown(
         f"## Performance Report {help_icon('Final analytics and improvement guidance across the full interview session.')}",
@@ -1829,6 +1903,7 @@ elif current_page == "Performance Report":
     if not st.session_state.iv_records:
         st.info("No interview records yet. Complete Interview Setup and run at least one question.")
     else:
+        # Subsection: Trend chart + compact history table
         setup = st.session_state.iv_setup or {}
         st.markdown(
             f"### Performance Snapshot {help_icon('Trend line of overall score across interview rounds.')}",
@@ -1872,9 +1947,11 @@ elif current_page == "Performance Report":
         )
 
         if st.session_state.iv_summary:
+            # Subsection: Final synthesized report details
             summary = st.session_state.iv_summary
             improvement_items = summary.get("overall_improvement_suggestions") or summary.get("suggested_answers", [])
             st.markdown("---")
+            # Subsection: Preview and export actions
             st.markdown(
                 f"### Interview Performance Report {help_icon('Structured debrief with strengths, gaps, improvements, and a timeline-based training plan.')}",
                 unsafe_allow_html=True,
@@ -1912,12 +1989,14 @@ elif current_page == "Performance Report":
                 type="primary",
             )
         else:
+            # Subsection: Trigger final summary generation
             st.info("Generate a final report preview, then decide whether to download.")
             if st.button("End Interview Now (Generate Report Preview)", use_container_width=True, type="primary"):
                 if generate_final_summary(setup, llm):
                     st.rerun()
 
         st.markdown("---")
+        # Subsection: End-of-flow navigation/reset actions
         r1, r2 = st.columns(2)
         with r1:
             if st.button("Back To Response Evaluation", use_container_width=True):
